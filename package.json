@@ -1,8 +1,9 @@
 {
-  "name": "lights_server",
+  "name": "southern_lights_server",
   "version": "1.0.0",
   "description": "A server for keeping track of GPIO states",
   "main": "server.js",
+	"github":"https://github.com/ianfoose/southern-lights-server",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
