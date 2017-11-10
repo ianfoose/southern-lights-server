@@ -1,30 +1,49 @@
 var express = require('express');
 var relaxful = require('relaxful');
 var app = express();
-var https = require('https');
 var fs = require('fs');
 var bodyParser = require('body-parser');
+var port = 80;
+var SOCKET_SERVER_URL;
+var apiServer;
 
-// ssl option
-var keyFile = fs.readFileSync('/home/administrator/ssl/fooseindustries.com.key','utf8');
-var crtFile = fs.readFileSync('/home/administrator/ssl/fooseindustries.com.crt','utf8');
-var caFile = fs.readFileSync('/home/administrator/ssl/gandi_intermediate.crt','utf8');
+// returns api server object
+module.exports.getServer = function() {
+	return apiServer;
+}
 
-var options = { key: keyFile, cert: crtFile, ca: caFile };
+// creates a server
+module.exports.createServer = function(options) {
+	if(options) {
+		if(options.port && !isNaN(options.port)) {
+			port = options.port;
+		}
 
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
+		if(options.ssl) {
+			var https = require('https');
+			apiServer = https.createServer(options,app);
+			apiServer.listen(port);
+		} else { // http
+			var http = require('http');
+			apiServer = http.createServer(app);
+			apiServer.listen(port);
+		}
 
-var mongoose = require('mongoose');
-mongoose.Promise = global.Promise;
-mongoose.connect('mongodb://localhost/lights'); 
+		if(options.socket_server_url) {
+			SOCKET_SERVER_URL = options.socket_server_url;
+		}
 
-// Socket Server URL
-var SOCKET_SERVER_URL = 'https://fooseindustries.com:3500/sendData';
+		app.use(bodyParser.urlencoded({ extended: true }));
+		app.use(bodyParser.json());
+
+		var mongoose = require('mongoose');
+		mongoose.Promise = global.Promise;
+		mongoose.connect('mongodb://localhost/lights'); 
+
+	}
+};
 
 var Light = require('./models/Light');
-
-var port = process.env.PORT || 8080;
 
 var router = express.Router();
 
@@ -191,14 +210,5 @@ router.route('/lights/:light_id')
 	});
 
 app.use('/api', router);
-
-// for http
-// var http = require('http');
-// var httpServer = http.createServer(app);
-// httpServer.listen(port);
-
-// for https
-var httpsServer = https.createServer(options,app);
-httpsServer.listen(port);
 
 console.log('API Started');
