@@ -32,183 +32,182 @@ module.exports.createServer = function(options) {
 		if(options.socket_server_url) {
 			SOCKET_SERVER_URL = options.socket_server_url;
 		}
-
-		app.use(bodyParser.urlencoded({ extended: true }));
-		app.use(bodyParser.json());
-
-		var mongoose = require('mongoose');
-		mongoose.Promise = global.Promise;
-		mongoose.connect('mongodb://localhost/lights'); 
-
 	}
-};
 
-var Light = require('./models/Light');
+	app.use(bodyParser.urlencoded({ extended: true }));
+	app.use(bodyParser.json());
 
-var router = express.Router();
+	var mongoose = require('mongoose');
+	mongoose.Promise = global.Promise;
+	mongoose.connect('mongodb://localhost/lights'); 
 
-app.use(function(req, res, next) {
-	next();
-});
+	var Light = require('./models/Light');
 
-router.get('/', function(req, res) {
-	res.json({ message: "Lights API"});
-});
+	var router = express.Router();
 
-router.route('/lights')
-	.post(function(req, res) {
-		console.log(req.body.name);
-		if(req.body.name && req.body.channel) {
-			var light = new Light();
-			var state = false;
-
-			if(req.body.state) {
-				state = req.body.state;
-			}
-
-			light.name = req.body.name.toLowerCase();
-			light.state = state;
-			light.channel = req.body.channel;
-
-			light.save(function(err) {
-				if(err) {
-					res.send(err);
-				} else {
-  					relaxful.request('POST',SOCKET_SERVER_URL,{body:'data='+JSON.stringify(light),headers: {'Content-Type':'application/x-www-form-urlencoded'}});
-					res.json(light);
-				}
-			});
-		} else {
-			res.send(new Error);
-		}
-	})
-
-	.get(function(req, res) {
-		Light.find({}).sort({"name":1 }).exec(function(err, lights) {
-			if(err)
-				res.send(err);
-
-			if(lights != null) {
-				res.json(lights);
-			} else {
-				res.send({message: "error"});
-			}
-		});
+	app.use(function(req, res, next) {
+		next();
 	});
 
-router.route('/lights/name/:light_name')
-	.get(function(req, res) {
-		Light.findOne({ name:req.params.light_name}, function(err, light) {
-			if(err)
-				res.send(err)
+	router.get('/', function(req, res) {
+		res.json({ message: "Lights API"});
+	});
 
-			if(light != null) {
-				res.json(light)
+	router.route('/lights')
+		.post(function(req, res) {
+			console.log(req.body.name);
+			if(req.body.name && req.body.channel) {
+				var light = new Light();
+				var state = false;
+
+				if(req.body.state) {
+					state = req.body.state;
+				}
+
+				light.name = req.body.name.toLowerCase();
+				light.state = state;
+				light.channel = req.body.channel;
+
+				light.save(function(err) {
+					if(err) {
+						res.send(err);
+					} else {
+	  					relaxful.request('POST',SOCKET_SERVER_URL,{body:'data='+JSON.stringify(light),headers: {'Content-Type':'application/x-www-form-urlencoded'}});
+						res.json(light);
+					}
+				});
+			} else {
+				res.send(new Error);
 			}
-		});
-	})
+		})
 
-	.put(function(req, res) {
-		var name = req.params.light_name.toLowerCase();
-        Light.findOne({name:name}, function(err, light) {
-            if(err)
-                res.send(err)
+		.get(function(req, res) {
+			Light.find({}).sort({"name":1 }).exec(function(err, lights) {
+				if(err)
+					res.send(err);
 
-			if (light != null) {
-	            if(req.body.name) {
-	                light.name = req.body.name.toLowerCase();
-	            } else {
-	                light.name = light.name;
-	            }
+				if(lights != null) {
+					res.json(lights);
+				} else {
+					res.send({message: "error"});
+				}
+			});
+	});
 
-           		if(req.body.state) {
+	router.route('/lights/name/:light_name')
+		.get(function(req, res) {
+			Light.findOne({ name:req.params.light_name}, function(err, light) {
+				if(err)
+					res.send(err)
+
+				if(light != null) {
+					res.json(light)
+				}
+			});
+		})
+
+		.put(function(req, res) {
+			var name = req.params.light_name.toLowerCase();
+	        Light.findOne({name:name}, function(err, light) {
+	            if(err)
+	                res.send(err)
+
+				if (light != null) {
+		            if(req.body.name) {
+		                light.name = req.body.name.toLowerCase();
+		            } else {
+		                light.name = light.name;
+		            }
+
+	           		if(req.body.state) {
+						if(req.body.state != 'true' && req.body.state != 'false') {
+							light.state = 'false';
+						} else {
+				            light.state = req.body.state;
+				        }
+					}
+
+	            	if(req.body.channel) {
+						light.channel = req.body.channel;
+		    		}
+
+	            	light.save(function(err) {
+	               		if(err) {
+	                    	res.send(err)
+						} else {
+							relaxful.request('POST',SOCKET_SERVER_URL,{body:'data='+JSON.stringify(light),headers: {'Content-Type':'application/x-www-form-urlencoded'}}).promise.then(r => {
+							return r.validate();
+						}).then(r => {
+							console.log(r.text);
+						}).catch(e => {
+							console.log('Error: '+e.message);
+						});
+
+						res.json(light);
+					}
+				});
+			} else {
+				res.send(new Error("error msg")); 
+			}
+	    });
+	});
+
+	router.route('/lights/:light_id')
+		.get(function(req, res) {
+			Light.findById(req.params.light_id, function(err, light) {
+				if(err)
+					res.send(err)
+
+				res.json(light)
+			});
+		})
+
+		.put(function(req, res) {
+			Light.findById(req.params.light_id, function(err, light) {
+				if(err)
+					res.send(err)
+
+				if(req.body.name) {
+					light.name = req.body.name.toLowerCase();
+				} else {
+					light.name = light.name;
+				}
+
+				if(req.body.state) {
 					if(req.body.state != 'true' && req.body.state != 'false') {
 						light.state = 'false';
 					} else {
-			            light.state = req.body.state;
-			        }
+						light.state = req.body.state;
+					}
 				}
 
-            	if(req.body.channel) {
+				if(req.body.channel) {
 					light.channel = req.body.channel;
-	    		}
+				}
 
-            	light.save(function(err) {
-               		if(err) {
-                    	res.send(err)
+				light.save(function(err) {
+					if(err) {
+						res.send(err)
 					} else {
-						relaxful.request('POST',SOCKET_SERVER_URL,{body:'data='+JSON.stringify(light),headers: {'Content-Type':'application/x-www-form-urlencoded'}}).promise.then(r => {
-						return r.validate();
-					}).then(r => {
-						console.log(r.text);
-					}).catch(e => {
-						console.log('Error: '+e.message);
-					});
-
-					res.json(light);
-				}
+				 relaxful.request('POST',SOCKET_SERVER_URL,{body:'data='+JSON.stringify(light),headers: {'Content-Type':'application/x-www-form-urlencoded'}});
+						res.json({message:"Light Updated"});
+					}
+				});
 			});
-		} else {
-			res.send(new Error("error msg")); 
-		}
-    });
-});
+		})
 
-router.route('/lights/:light_id')
-	.get(function(req, res) {
-		Light.findById(req.params.light_id, function(err, light) {
-			if(err)
-				res.send(err)
-
-			res.json(light)
-		});
-	})
-
-	.put(function(req, res) {
-		Light.findById(req.params.light_id, function(err, light) {
-			if(err)
-				res.send(err)
-
-			if(req.body.name) {
-				light.name = req.body.name.toLowerCase();
-			} else {
-				light.name = light.name;
-			}
-
-			if(req.body.state) {
-				if(req.body.state != 'true' && req.body.state != 'false') {
-					light.state = 'false';
-				} else {
-					light.state = req.body.state;
-				}
-			}
-
-			if(req.body.channel) {
-				light.channel = req.body.channel;
-			}
-
-			light.save(function(err) {
-				if(err) {
+		.delete(function(req, res) {
+			Light.remove({
+				_id: req.params.light_id
+			}, function(err, light) {
+				if(err)
 					res.send(err)
-				} else {
-			 relaxful.request('POST',SOCKET_SERVER_URL,{body:'data='+JSON.stringify(light),headers: {'Content-Type':'application/x-www-form-urlencoded'}});
-					res.json({message:"Light Updated"});
-				}
+
+				res.json({message:'Light Deleted'});
 			});
-		});
-	})
-
-	.delete(function(req, res) {
-		Light.remove({
-			_id: req.params.light_id
-		}, function(err, light) {
-			if(err)
-				res.send(err)
-
-			res.json({message:'Light Deleted'});
-		});
 	});
 
-app.use('/api', router);
+	app.use('/api', router);
 
-console.log('API Started');
+	console.log('API Started');
+};
