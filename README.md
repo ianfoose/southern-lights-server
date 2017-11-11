@@ -5,6 +5,14 @@ An API server for managing data for lights and groups and sending to subscribers
 
 ## Install
 
+### NPM
+
+```npm install southern_lights_server```
+
+### Manual
+
+```var server = require('./server.js'); ```
+
 ## Use
 
 To use, setup the server.  
