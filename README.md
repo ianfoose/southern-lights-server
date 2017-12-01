@@ -1,7 +1,7 @@
 # About
 An API server for managing data for lights and groups and sending to subscribers.
 
-![southern-lights-client-logo](https://fooseindustries.com/hosted/southern-lights.jpg)
+![southern-lights-logo](/southern-lights.jpg)
 
 ## Install
 
